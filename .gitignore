@@ -1,19 +1,11 @@
-# Ignore everything
-*
-
-# Always keep gitignore
 !.gitignore
-
-# Allow specific directories
-!megapi_firmware/
-!localization/
-
-# Allow files inside localization to be evaluated
-!localization/**
+.DS_Store
 
 # Do not track these files
 localization/.DS_Store
 localization/homography_floor.npz
-
-# Explicitly ignore runs
+localization/.venv
 localization/runs/
+
+archive
+robotics_demov1.mp4
