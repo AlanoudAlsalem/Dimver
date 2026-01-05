@@ -1,4 +1,20 @@
+# Ignore everything
 *
+
+# Always keep gitignore
 !.gitignore
+
+# Allow specific directories
 !megapi_firmware/
+!localization/
+
+# Allow files inside localization to be evaluated
+!localization/**
+
+# Track these files
 !localization/final_script_laptop.py
+!localization/offline_vis.py
+!localization/requirements.txt
+
+# Explicitly ignore runs
+localization/runs/
