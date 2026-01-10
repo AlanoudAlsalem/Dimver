@@ -6,6 +6,8 @@ localization/.DS_Store
 localization/homography_floor.npz
 localization/.venv
 localization/runs/
+localization/camera_calib_old.npz
+localization/final_w_autonomous.py
 
 archive
 robotics_demov1.mp4

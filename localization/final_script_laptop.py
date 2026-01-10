@@ -18,8 +18,17 @@ TAG_ID = 1
 CAM_INDEX = 1
 H_FILE = "homography_floor.npz"
 
-WORLD_W_METERS = 1.60
-WORLD_H_METERS = 1.80
+WORLD_W_METERS = 1.07
+WORLD_H_METERS = 1.47
+
+# ===== Camera calibration (checkerboard) =====
+CALIB_FILE = "camera_calib.npz"
+
+PATTERN_SIZE = (7, 10)          # (cols, rows) inner corners
+SQUARE_SIZE_M = 0.13383         # meters # 147.3 cm * 107 cm
+
+# Capture targets
+CALIB_MIN_SAMPLES = 25
 
 # ========== Logging / Recording ==========
 RUNS_DIR = "runs"
@@ -95,6 +104,62 @@ def log_event(event_type, **kwargs):
 
 # ========== AprilTag detector ==========
 detector = Detector(families="tag36h11", nthreads=2, quad_decimate=1.0, quad_sigma=0.0)
+
+# ========== Calibration helpers ==========
+def save_camera_calib(path, K, dist, newK, roi, img_size, rms):
+    np.savez(path, K=K, dist=dist, newK=newK, roi=np.array(roi), img_size=np.array(img_size), rms=rms)
+    print(f"[CALIB] Saved camera calibration to {path}")
+
+def load_camera_calib(path):
+    try:
+        d = np.load(path)
+        K = d["K"]
+        dist = d["dist"]
+        newK = d["newK"]
+        roi = tuple(d["roi"].tolist())
+        img_size = tuple(d["img_size"].tolist())
+        rms = float(d["rms"])
+        print(f"[CALIB] Loaded camera calibration from {path} (RMS={rms:.4f})")
+        return K, dist, newK, roi, img_size, rms
+    except Exception:
+        return None
+
+def try_find_chessboard(gray):
+    """
+    Returns (found, corners) where corners is Nx1x2 float32 (inner corners).
+    Uses SB detector first (more robust), falls back to classic.
+    """
+    found = False
+    corners = None
+
+    # More robust if available in your OpenCV build
+    if hasattr(cv2, "findChessboardCornersSB"):
+        found, corners = cv2.findChessboardCornersSB(gray, PATTERN_SIZE,
+                                                     flags=cv2.CALIB_CB_EXHAUSTIVE | cv2.CALIB_CB_ACCURACY)
+    if not found:
+        found, corners = cv2.findChessboardCorners(gray, PATTERN_SIZE,
+                                                   flags=cv2.CALIB_CB_ADAPTIVE_THRESH |
+                                                         cv2.CALIB_CB_NORMALIZE_IMAGE)
+
+    if found and corners is not None:
+        # Refine corners (classic refinement; still useful)
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+        corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
+        return True, corners
+
+    return False, None
+
+def calibrate_from_samples(objpoints, imgpoints, img_size):
+    """
+    Runs cv2.calibrateCamera and returns K, dist, newK, roi, rms
+    """
+    # Fix aspect ratio? Usually leave free; iPhone lenses can benefit from full model.
+    rms, K, dist, rvecs, tvecs = cv2.calibrateCamera(
+        objpoints, imgpoints, img_size, None, None
+    )
+    newK, roi = cv2.getOptimalNewCameraMatrix(K, dist, img_size, alpha=0.0, newImgSize=img_size)
+    return K, dist, newK, roi, rms
+
 
 # ========== Homography utils ==========
 clicked_points = []
@@ -272,6 +337,23 @@ while True:
 
     h, w = frame.shape[:2]
 
+    # ===== Calibration state =====
+    calib = load_camera_calib(CALIB_FILE)
+    K = dist = newK = None
+    roi = None
+    calib_img_size = None
+
+    objpoints = []  # 3D points in real world space
+    imgpoints = []  # 2D points in image plane
+
+    # Prepare object points for the chessboard (Z=0 plane)
+    objp = np.zeros((PATTERN_SIZE[0] * PATTERN_SIZE[1], 3), np.float32)
+    objp[:, :2] = np.mgrid[0:PATTERN_SIZE[0], 0:PATTERN_SIZE[1]].T.reshape(-1, 2)
+    objp *= SQUARE_SIZE_M  # scale to meters
+
+    if calib is not None:
+        K, dist, newK, roi, calib_img_size, rms = calib
+
     # Create video writer once we know frame size
     if vw is None:
         # Try to get FPS from camera; fall back if unreliable
@@ -297,6 +379,13 @@ while True:
     place_btn = (x1, y1_place, x2, y2_place)
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    # --- Calibration key controls ---
+    # k: capture chessboard sample
+    # K: run calibration (once enough samples)
+    # u: toggle undistort on/off (optional)
+
+    undistort_on = (K is not None and dist is not None and newK is not None)
 
     key = cv2.waitKey(1) & 0xFF
     if key == ord('q'):
@@ -327,10 +416,31 @@ while True:
         send_cmd({"type": "arm", "action": "place"})
         print("Sent ARM: PLACE")
 
+    if key == ord('k'):
+        found, corners = try_find_chessboard(gray)
+        if found:
+            imgpoints.append(corners)
+            objpoints.append(objp.copy())
+            print(f"[CALIB] Captured sample {len(imgpoints)}")
+        else:
+            print("[CALIB] Chessboard not found in this frame.")
+
+    if key == ord('K'):
+        if len(imgpoints) < CALIB_MIN_SAMPLES:
+            print(f"[CALIB] Need at least {CALIB_MIN_SAMPLES} samples, have {len(imgpoints)}")
+        else:
+            img_size = (w, h)
+            K, dist, newK, roi, rms = calibrate_from_samples(objpoints, imgpoints, img_size)
+            save_camera_calib(CALIB_FILE, K, dist, newK, roi, img_size, rms)
+            undistort_on = True
+            print("[CALIB] Calibration complete. IMPORTANT: Recalibrate homography now (press 'c').")
+            H = None  # force re-homography on undistorted frames
+
     # Detect AprilTags
     tags = detector.detect(gray, estimate_tag_pose=False, camera_params=None, tag_size=None)
 
     payload = {"t": time.time(), "valid": False}
+    
 
     tag = None
     for t in tags:
