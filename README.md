@@ -7,8 +7,6 @@ A mecanum-wheel mobile manipulator that detects wheel slip from proprioceptive m
   <img src="https://img.shields.io/badge/Gazebo-Simulation-FF6B35?style=for-the-badge">
   <img src="https://img.shields.io/badge/Raspberry%20Pi-Embedded-C51A4A?style=for-the-badge&logo=raspberrypi&logoColor=white">
   <img src="https://img.shields.io/badge/MegaPi-Motor%20Control-4B5563?style=for-the-badge">
-  <img src="https://img.shields.io/badge/Computer%20Vision-Localization-6C5CE7?style=for-the-badge">
-  <img src="https://img.shields.io/badge/AprilTag-Detection-00A896?style=for-the-badge">
 </p>
 
 ## Overview
