@@ -1,4 +1,18 @@
-# Dimver
+# Dimver: Learning-Based Traction Control for a Mobile Manipulator
+
+A mecanum-wheel mobile manipulator that detects wheel slip from proprioceptive measurements and adapts its velocity in real time using a learned slip estimator and finite-state controller.
+
+<p align="center">
+  <img src="https://img.shields.io/badge/ROS%202-Noetic-22314E?style=for-the-badge&logo=ros&logoColor=white">
+  <img src="https://img.shields.io/badge/Gazebo-Simulation-FF6B35?style=for-the-badge">
+  <img src="https://img.shields.io/badge/Raspberry%20Pi-Embedded-C51A4A?style=for-the-badge&logo=raspberrypi&logoColor=white">
+  <img src="https://img.shields.io/badge/MegaPi-Motor%20Control-4B5563?style=for-the-badge">
+  <img src="https://img.shields.io/badge/Computer%20Vision-Localization-6C5CE7?style=for-the-badge">
+  <img src="https://img.shields.io/badge/AprilTag-Detection-00A896?style=for-the-badge">
+</p>
+
+## Overview
+
 This is an implementation of a **mobile manipulator** consisting of a mecanum-wheel base and a **2-DOF planar robotic arm**, controlled by a MegaPi motor controller and a Raspberry Pi. The system addresses wheel slip where the no-slip assumption underlying standard kinematics breaks down on low-traction surfaces, causing odometry drift and control instability.
 
 - A **supervised learning model** is trained in ROS-Gazebo simulation to estimate slip magnitude from proprioceptive measurements alone. The estimator is deployed in a **finite-state traction controller** that reduces commanded velocity when slip is detected and restores it once traction recovers.
