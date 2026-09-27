@@ -66,7 +66,7 @@ where $(M(\theta))$ is the inertia matrix, $(C(\theta,\dot{\theta}))$ captures C
 
 #### Slip Formulation
 
-The classical slip ratio is defined in terms of the wheel radius ($r$), wheel angular velocity ($\omega_{\text{wheel}}$), and ground velocity ($v_{\text{ground}}$):
+The classical slip ratio is defined in terms of the wheel radius, wheel angular velocity, and ground velocity:
 
 $$
 \lambda_{\text{ratio}} = 1 - \frac{v_{\text{ground}}}
@@ -75,7 +75,7 @@ $$
 \lambda_{\text{ratio}} \in [0,1]
 $$
 
-Rather than using the normalized slip ratio, this project uses a signed velocity divergence that maps directly to the control correction $\lambda = v_{\text{wheel}} - v_{\text{ground}}$. The wheel-induced velocity is estimated from the mean angular velocity of the four wheels:
+Rather than using the normalized slip ratio, this project uses a signed velocity divergence that maps directly to the control correction $\lambda = v_{\text{wheel}} - v_{\text{ground}}$. The wheel-induced velocity is estimated from the mean angular velocity:
 
 $$
 v_{\text{wheel}} =
@@ -116,10 +116,10 @@ The controller operates as a three-state FSM built on the slip signal $\lambda$ 
  ## Vision and Localization 
 
  ```mathematica
-┌─────────────────┐   ┌───────────────┐   ┌─────────────────────┐   ┌─────────────────┐   ┌─────────────┐
-│ Overhead Camera │ → │ Undistortion  │ → │ 4-Click Homography  │ → │ AprilTag Detect │ → │ (x, y, yaw) │
-└─────────────────┘   └───────────────┘   │     (one-time)      │   └─────────────────┘   └─────────────┘
-                                           └─────────────────────┘
+┌─────────────────┐   ┌──────────────┐   ┌────────────────────┐   ┌─────────────────┐   ┌───────────┐
+│ Overhead Camera │ → │ Undistortion │ → │ 4-Click Homography │ → │ AprilTag Detect │ → │(x, y, yaw)│
+└─────────────────┘   └──────────────┘   │     (one-time)     │   └─────────────────┘   └───────────┘
+                                          └────────────────────┘
 ```
 
 <p align="center">
